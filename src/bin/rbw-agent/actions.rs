@@ -523,7 +523,13 @@ pub async fn sync(
     };
     let (
         tokens,
-        (protected_key, protected_private_key, protected_org_keys, entries),
+        (
+            protected_key,
+            protected_private_key,
+            protected_org_keys,
+            entries,
+            user_id,
+        ),
     ) = match rbw::actions::sync(&access_token, &refresh_token).await {
         Ok(res) => res,
         // The server will never accept this refresh token again, so retrying
@@ -562,6 +568,7 @@ pub async fn sync(
     db.protected_key = Some(protected_key);
     db.protected_private_key = Some(protected_private_key);
     db.protected_org_keys = protected_org_keys;
+    db.user_id = Some(user_id);
     db.entries = entries;
     save_db(&db).await?;
 

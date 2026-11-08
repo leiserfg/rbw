@@ -1563,6 +1563,12 @@ pub fn add(
     unlock()?;
 
     let mut db = load_db()?;
+    if db.user_id.is_none() {
+        crate::actions::sync()
+            .context("failed to sync user id before adding entry")?;
+        db = load_db()?;
+    }
+    let user_id = user_id(&db)?.to_string();
     // unwrap is safe here because the call to unlock above is guaranteed to
     // populate these or error
     let mut access_token = db.access_token.as_ref().unwrap().clone();
@@ -1642,6 +1648,7 @@ pub fn add(
     if let (Some(tokens), ()) = rbw::actions::add(
         &access_token,
         &refresh_token,
+        &user_id,
         &name,
         &rbw::db::EntryData::Login {
             username,
@@ -1679,6 +1686,13 @@ pub fn generate(
         unlock()?;
 
         let mut db = load_db()?;
+        if db.user_id.is_none() {
+            crate::actions::sync().context(
+                "failed to sync user id before generating a passphrase",
+            )?;
+            db = load_db()?;
+        }
+        let user_id = user_id(&db)?.to_string();
         // unwrap is safe here because the call to unlock above is guaranteed
         // to populate these or error
         let mut access_token = db.access_token.as_ref().unwrap().clone();
@@ -1748,6 +1762,7 @@ pub fn generate(
         if let (Some(tokens), ()) = rbw::actions::add(
             &access_token,
             &refresh_token,
+            &user_id,
             &name,
             &rbw::db::EntryData::Login {
                 username,
@@ -1780,6 +1795,12 @@ pub fn edit(
     unlock()?;
 
     let mut db = load_db()?;
+    if db.user_id.is_none() {
+        crate::actions::sync()
+            .context("failed to sync user id before editing entry")?;
+        db = load_db()?;
+    }
+    let user_id = user_id(&db)?.to_string();
     let access_token = db.access_token.as_ref().unwrap();
     let refresh_token = db.refresh_token.as_ref().unwrap();
 
@@ -1879,6 +1900,7 @@ pub fn edit(
     if let (Some(tokens), ()) = rbw::actions::edit(
         access_token,
         refresh_token,
+        &user_id,
         &entry.id,
         entry.org_id.as_deref(),
         &entry.name,
@@ -2672,6 +2694,13 @@ fn parse_editor(contents: &str) -> (Option<String>, Option<String>) {
     let notes = if notes.is_empty() { None } else { Some(notes) };
 
     (password, notes)
+}
+
+fn user_id(db: &rbw::db::Db) -> anyhow::Result<&str> {
+    db.user_id.as_deref().with_context(|| {
+        "user id is missing from the db, please run `rbw sync` first"
+            .to_string()
+    })
 }
 
 fn load_db() -> anyhow::Result<rbw::db::Db> {
