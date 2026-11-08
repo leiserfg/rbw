@@ -42,7 +42,7 @@ impl ssh_agent_lib::agent::Session for SshAgent {
             .map(|p| {
                 p.parse::<ssh_agent_lib::ssh_key::PublicKey>()
                     .map(|pk| ssh_agent_lib::proto::Identity {
-                        pubkey: pk.key_data().clone(),
+                        credential: pk.key_data().clone().into(),
                         comment: String::new(),
                     })
                     .map_err(ssh_agent_lib::error::AgentError::other)
@@ -57,8 +57,10 @@ impl ssh_agent_lib::agent::Session for SshAgent {
         ssh_agent_lib::ssh_key::Signature,
         ssh_agent_lib::error::AgentError,
     > {
-        let pubkey =
-            ssh_agent_lib::ssh_key::PublicKey::new(request.pubkey, "");
+        let pubkey = ssh_agent_lib::ssh_key::PublicKey::new(
+            request.credential.key_data().clone(),
+            "",
+        );
 
         let private_key =
             crate::actions::find_ssh_private_key(self.state.clone(), pubkey)
